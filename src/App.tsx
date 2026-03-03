@@ -1,13 +1,43 @@
-import "./App.css";
+import { useState, useEffect } from "react";
+import { MatrixProvider } from "./context/MatrixContext";
+import { Login } from "./components/Login";
 
-function App() {
+export type Creds = {
+  userId: string;
+  accessToken: string;
+  baseUrl: string;
+  deviceId: string;
+};
+
+const App = () => {
+  const [creds, setCreds] = useState<Creds | null>(null);
+
+  useEffect(() => {
+    // Check if we already have a session saved
+    const saved = localStorage.getItem("matrix_creds");
+    if (saved) {
+      setCreds(JSON.parse(saved));
+    }
+  }, []);
+
+  const logout = () => {
+    localStorage.removeItem("matrix_creds");
+    setCreds(null);
+  };
+
+  if (!creds) {
+    return <Login onLoginSuccess={(newCreds) => setCreds(newCreds)} />;
+  }
+
   return (
-    <>
-      <div className="underline text-red-300 font-semibold text-2xl">
-        Newly created React App
+    <MatrixProvider credentials={creds}>
+      <div className="app-layout">
+        <button onClick={logout}>Logout</button>
+        {/* Your Chat Components Go Here */}
+        <h1>Welcome to your Matrix Client</h1>
       </div>
-    </>
+    </MatrixProvider>
   );
-}
+};
 
 export default App;
