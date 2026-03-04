@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react";
 import { MatrixProvider } from "./context/MatrixContext";
 import { Login } from "./components/Login";
+import AuthenticatedLayout from "./components/AuthenticatedLayout";
 
 export type Creds = {
   userId: string;
@@ -25,18 +26,16 @@ const App = () => {
     setCreds(null);
   };
 
-  if (!creds) {
-    return <Login onLoginSuccess={(newCreds) => setCreds(newCreds)} />;
-  }
-
   return (
-    <MatrixProvider credentials={creds}>
-      <div className="app-layout">
-        <button onClick={logout}>Logout</button>
-        {/* Your Chat Components Go Here */}
-        <h1>Welcome to your Matrix Client</h1>
-      </div>
-    </MatrixProvider>
+    <div className="min-h-screen w-full flex flex-col bg-linear-to-tr from-blue-50 via-indigo-50 to-rose-50 font-sans text-slate-900 transition-colors duration-500">
+      {!creds ? (
+        <Login onLoginSuccess={(newCreds) => setCreds(newCreds)} />
+      ) : (
+        <MatrixProvider credentials={creds}>
+          <AuthenticatedLayout logout={logout} />
+        </MatrixProvider>
+      )}
+    </div>
   );
 };
 

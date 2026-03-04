@@ -49,6 +49,8 @@ export const Login: React.FC<LoginProps> = ({ onLoginSuccess }) => {
       setError(
         err.message || "Login failed. Check your Synapse URL and credentials.",
       );
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -116,13 +118,13 @@ export const Login: React.FC<LoginProps> = ({ onLoginSuccess }) => {
               value={password}
               onChange={(e) => setPassword(e.target.value)}
               className="w-full px-4 py-3 bg-white/5 border border-white/10 rounded-xl text-white placeholder-purple-300/50 focus:outline-none focus:ring-2 focus:ring-purple-500 transition-all"
-              placeholder="••••••••"
+              placeholder="••••"
             />
           </div>
 
           <button
             disabled={loading}
-            className="w-full py-3 px-4 bg-linear-to-r from-purple-500 to-pink-500 hover:from-purple-600 hover:to-pink-600 text-white font-semibold rounded-xl shadow-lg transform transition active:scale-[0.98] disabled:opacity-50"
+            className="cursor-pointer w-full py-3 px-4 bg-linear-to-r from-purple-500 to-pink-500 hover:from-purple-600 hover:to-pink-600 text-white font-semibold rounded-xl shadow-lg transform transition active:scale-[0.98] disabled:opacity-50"
           >
             {loading ? "Authenticating..." : "Sign In"}
           </button>
