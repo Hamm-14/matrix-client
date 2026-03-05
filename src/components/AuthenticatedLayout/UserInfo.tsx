@@ -1,7 +1,7 @@
-import { useEffect, useState } from "react";
+import React, { useEffect, useState } from "react";
 import { useMatrix } from "../../context/MatrixContext";
 
-export const UserHeaderInfo = () => {
+const UserInfo: React.FC = () => {
   const { client } = useMatrix();
   const [displayName, setDisplayName] = useState<string>("");
   const userId = client?.getUserId() || "";
@@ -24,14 +24,16 @@ export const UserHeaderInfo = () => {
           : userId.charAt(1).toUpperCase()}
       </div>
 
-      <div className="flex flex-col leading-tight">
+      <div className="flex flex-col leading-tight -mt-0.5">
         <span className="text-sm font-bold text-slate-800">
           {displayName || "Loading..."}
         </span>
-        <span className="text-[12px] text-slate-500 font-medium tracking-tight">
+        <span className="text-[12px] text-slate-500 font-semibold tracking-tight">
           {userId}
         </span>
       </div>
     </div>
   );
 };
+
+export default UserInfo;

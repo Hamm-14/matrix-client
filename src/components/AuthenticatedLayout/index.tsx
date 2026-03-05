@@ -1,4 +1,9 @@
-import { UserHeaderInfo } from "./UserInfo";
+import { useEffect, useState } from "react";
+import { useMatrix } from "../../context/MatrixContext";
+import UserInfo from "./UserInfo";
+import RoomList from "./RoomList";
+import EmptyState from "./EmptyState";
+import ChatWindow from "./ChatWindow";
 
 interface AuthenticatedLayoutProps {
   logout: () => void;
@@ -7,22 +12,29 @@ interface AuthenticatedLayoutProps {
 const AuthenticatedLayout: React.FC<AuthenticatedLayoutProps> = ({
   logout,
 }) => {
+  const [selectedRoomId, setSelectedRoomId] = useState<string | null>(null);
+  const [selectedRoomName, setSelectedRoomName] = useState<string>("");
+  const { client } = useMatrix();
+
+  useEffect(() => {
+    if (!client || !selectedRoomId) return;
+
+    const room = client.getRoom(selectedRoomId);
+    const roomName = room ? room.name : "Unknown Room";
+    setSelectedRoomName(roomName);
+  }, [selectedRoomId]);
+
   return (
     <div className="flex h-screen overflow-hidden animate-in fade-in duration-700">
-      {/* Sidebar will go here */}
       <aside className="w-80 bg-white/40 backdrop-blur-md border-r border-white/50 shadow-sm">
-        {/* <RoomList /> */}
-        <div className="p-4 font-semibold border-b border-white/20 tracking-wide text-slate-800">
-          Messages
-        </div>
+        <RoomList onSelectRoom={(id) => setSelectedRoomId(id)} />
       </aside>
 
-      {/* Chat Area will go here */}
-      <main className="flex-1 flex flex-col">
-        <header className="h-16 bg-white/20 backdrop-blur-sm border-b border-white/30 flex items-center px-6 justify-between">
+      <main className="flex-1 flex flex-col h-screen overflow-hidden">
+        <header className="h-16 shrink-0 bg-white/20 backdrop-blur-sm border-b border-white/30 flex items-center px-6 justify-between">
           <div className="flex items-center gap-4">
-            <span className="font-bold text-slate-600 tracking-wide">
-              Matrix Dashboard
+            <span className="font-semibold text-slate-600 tracking-wide">
+              {selectedRoomId ? selectedRoomName : "Matrix Dashboard"}
             </span>
             <span className="px-2 py-0.5 rounded text-[12px] bg-green-500/10 text-green-600 border border-green-500/20 font-bold uppercase">
               Live
@@ -30,8 +42,7 @@ const AuthenticatedLayout: React.FC<AuthenticatedLayoutProps> = ({
           </div>
 
           <div className="flex items-center gap-6">
-            <UserHeaderInfo />
-
+            <UserInfo />
             <button
               onClick={logout}
               className="cursor-pointer group flex items-center gap-2 text-sm font-semibold text-slate-400 hover:text-rose-500 transition-colors"
@@ -54,8 +65,14 @@ const AuthenticatedLayout: React.FC<AuthenticatedLayoutProps> = ({
           </div>
         </header>
 
-        <div className="flex-1 flex items-center justify-center text-slate-400">
-          <p>Welcome! Your matrix client is ready.</p>
+        <div className="flex-1 relative flex flex-col overflow-hidden">
+          {selectedRoomId ? (
+            <ChatWindow roomId={selectedRoomId} />
+          ) : (
+            <div className="flex-1 flex items-center justify-center">
+              <EmptyState onSelectRoom={(id) => setSelectedRoomId(id)} />
+            </div>
+          )}
         </div>
       </main>
     </div>
