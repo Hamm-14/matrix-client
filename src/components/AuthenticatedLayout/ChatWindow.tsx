@@ -1,6 +1,7 @@
 import React, { useEffect, useState, useRef } from "react";
-import { useMatrix } from "../../context/MatrixContext";
 import { MatrixEvent, RoomEvent } from "matrix-js-sdk";
+import { QRCodeSVG } from "qrcode.react";
+import { useMatrix } from "../../context/MatrixContext";
 
 interface ChatWindowProps {
   roomId: string;
@@ -72,6 +73,16 @@ const ChatWindow: React.FC<ChatWindowProps> = ({ roomId }) => {
     }
   };
 
+  const isMatrixQR = (content: string) => {
+    // Check if it starts with the Matrix QR version '2@'
+    // OR if it's a comma-separated string starting with '2'
+    const isV2Format = content.startsWith("2@") && content.includes(",");
+    const isLegacyFormat =
+      content.split(",")[0] === "2" && content.split(",").length === 4;
+
+    return isV2Format || isLegacyFormat;
+  };
+
   if (client && membership === "invite") {
     return (
       <div className="flex-1 flex flex-col items-center justify-center bg-white/30 backdrop-blur-md p-10">
@@ -128,6 +139,8 @@ const ChatWindow: React.FC<ChatWindowProps> = ({ roomId }) => {
 
             if (!content) return null;
 
+            const isQRCode = isMatrixQR(content);
+
             return (
               <div
                 key={event.getId()}
@@ -140,11 +153,19 @@ const ChatWindow: React.FC<ChatWindowProps> = ({ roomId }) => {
                       : "bg-white text-slate-800 rounded-tl-none border border-slate-100"
                   }`}
                 >
-                  <p
-                    className={`text-sm ${isMe ? "text-white" : "text-slate-800"}`}
-                  >
-                    {content}
-                  </p>
+                  {isQRCode ? (
+                    <QRCodeSVG
+                      value={content}
+                      size={200}
+                      level="M" // Medium error correction is usually best for screens
+                    />
+                  ) : (
+                    <p
+                      className={`text-sm ${isMe ? "text-white" : "text-slate-800"}`}
+                    >
+                      {content}
+                    </p>
+                  )}
                   <p className={`text-[10px] mt-2 opacity-60 text-right`}>
                     {new Date(event.getTs()).toLocaleString([], {
                       weekday: "short",
