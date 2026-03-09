@@ -17,7 +17,7 @@ const EmptyState: React.FC<EmptyStateProps> = ({ onSelectRoom }) => {
     try {
       // Create the room with the 'is_direct' flag
       const response = await client.createRoom({
-        name: `Chat with ${targetUserId.split(":")[0]}`, // Optional name
+        name: `Chat with ${targetUserId.split(":")[0]}`,
         invite: [targetUserId], // Invite the user immediately
         is_direct: true, // Marks this as a DM in Matrix metadata
         preset: "trusted_private_chat" as any, // Optimized for DMs

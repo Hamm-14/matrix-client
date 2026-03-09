@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { ClientEvent, Room, RoomEvent } from "matrix-js-sdk";
 import { useMatrix } from "../../context/MatrixContext";
 
@@ -10,14 +10,8 @@ const RoomList = ({
   const { client } = useMatrix();
   const [rooms, setRooms] = useState<Room[]>([]);
 
-  useEffect(() => {
-    if (!client) return;
-
-    const allRooms = client.getRooms();
-    setRooms(allRooms);
-
-    // Listen for room updates (new messages, name changes, new rooms)
-    const updateRooms = () => {
+  const handleRoomUpdates = useCallback(() => {
+    if (client) {
       const allRooms = client.getRooms();
 
       const sorted = allRooms.sort((a, b) => {
@@ -31,14 +25,22 @@ const RoomList = ({
       });
 
       setRooms([...sorted]);
-    };
+    }
+  }, [client]);
 
-    client.on(ClientEvent.Room, updateRooms);
-    client.on(RoomEvent.Timeline, updateRooms);
+  useEffect(() => {
+    if (!client) return;
+
+    handleRoomUpdates(); // initial room load
+
+    client.on(ClientEvent.Room, handleRoomUpdates);
+    client.on(RoomEvent.Timeline, handleRoomUpdates);
+    client.on(RoomEvent.MyMembership, handleRoomUpdates);
 
     return () => {
-      client.removeListener(ClientEvent.Room, updateRooms);
-      client.removeListener(RoomEvent.Timeline, updateRooms);
+      client.removeListener(ClientEvent.Room, handleRoomUpdates);
+      client.removeListener(RoomEvent.Timeline, handleRoomUpdates);
+      client.removeListener(RoomEvent.MyMembership, handleRoomUpdates);
     };
   }, [client]);
 
@@ -93,6 +95,66 @@ const RoomList = ({
           const type = getBridgeType(room);
           const lastEvent = room.getLiveTimeline().getEvents().slice(-1)[0];
           const lastMsg = lastEvent?.getContent()?.body || "No message yet";
+          const membership = room.getMyMembership();
+
+          if (client && membership === "invite") {
+            return (
+              <div
+                key={room.roomId}
+                onClick={() => onSelectRoom(room.roomId)}
+                className="cursor-pointer p-3 mb-2 bg-indigo-50/50 border border-indigo-100 rounded-xl animate-pulse"
+              >
+                <p className="text-xs font-bold text-indigo-700 mb-2">
+                  New Invitation!
+                </p>
+                <div className="flex items-center justify-between">
+                  <span className="text-sm font-medium text-slate-700 truncate w-32">
+                    {room.name}
+                  </span>
+                  {/* <div className="flex gap-2">
+                    <button
+                      onClick={() => client.joinRoom(room.roomId)}
+                      className="p-1.5 bg-indigo-600 text-white rounded-md hover:bg-indigo-700 shadow-sm"
+                      title="Accept"
+                    >
+                      <svg
+                        className="w-4 h-4"
+                        fill="none"
+                        stroke="currentColor"
+                        viewBox="0 0 24 24"
+                      >
+                        <path
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                          strokeWidth="2"
+                          d="M5 13l4 4L19 7"
+                        />
+                      </svg>
+                    </button>
+                    <button
+                      onClick={() => client.leave(room.roomId)}
+                      className="p-1.5 bg-white text-rose-500 border border-rose-100 rounded-md hover:bg-rose-50"
+                      title="Decline"
+                    >
+                      <svg
+                        className="w-4 h-4"
+                        fill="none"
+                        stroke="currentColor"
+                        viewBox="0 0 24 24"
+                      >
+                        <path
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                          strokeWidth="2"
+                          d="M6 18L18 6M6 6l12 12"
+                        />
+                      </svg>
+                    </button>
+                  </div> */}
+                </div>
+              </div>
+            );
+          }
 
           return (
             <button

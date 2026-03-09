@@ -2,26 +2,46 @@ import React, { useEffect, useState, useRef } from "react";
 import { useMatrix } from "../../context/MatrixContext";
 import { MatrixEvent, RoomEvent } from "matrix-js-sdk";
 
-const ChatWindow = ({ roomId }: { roomId: string }) => {
+interface ChatWindowProps {
+  roomId: string;
+}
+
+const ChatWindow: React.FC<ChatWindowProps> = ({ roomId }) => {
   const { client } = useMatrix();
   const [messages, setMessages] = useState<MatrixEvent[]>([]);
   const [newMessage, setNewMessage] = useState("");
+  const [membership, setMembership] = useState<string | undefined>(
+    client?.getRoom(roomId)?.getMyMembership(),
+  );
   const scrollRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     if (!client) return;
 
-    const room = client.getRoom(roomId);
-    if (room) {
-      setMessages([...room.getLiveTimeline().getEvents()]);
-    }
+    // Function to sync membership and messages
+    const updateRoomData = () => {
+      const currentRoom = client.getRoom(roomId);
+      if (currentRoom) {
+        setMessages([...currentRoom.getLiveTimeline().getEvents()]);
+      }
+    };
+
+    updateRoomData();
 
     const handleTimelineEvent = (event: MatrixEvent) => {
-      console.log("Timeline event", event.getType(), event.getContent());
       if (event.getRoomId() !== roomId) return;
-      if (event.getType() !== "m.room.message") return;
 
-      setMessages((prev) => [...prev, event]);
+      // If we see a membership event for ourselves, update the state
+      if (
+        event.getType() === "m.room.member" &&
+        event.getStateKey() === client.getUserId()
+      ) {
+        updateRoomData();
+      }
+
+      if (event.getType() === "m.room.message") {
+        setMessages((prev) => [...prev, event]);
+      }
     };
 
     client.on(RoomEvent.Timeline, handleTimelineEvent);
@@ -42,43 +62,101 @@ const ChatWindow = ({ roomId }: { roomId: string }) => {
     setNewMessage("");
   };
 
+  const handleJoin = async () => {
+    try {
+      if (!client) return;
+      await client.joinRoom(roomId);
+      setMembership("join");
+    } catch (err) {
+      console.error("Failed to join room:", err);
+    }
+  };
+
+  if (client && membership === "invite") {
+    return (
+      <div className="flex-1 flex flex-col items-center justify-center bg-white/30 backdrop-blur-md p-10">
+        <div className="w-16 h-16 bg-indigo-100 text-indigo-600 rounded-full flex items-center justify-center mb-4">
+          <svg
+            className="w-8 h-8"
+            fill="none"
+            stroke="currentColor"
+            viewBox="0 0 24 24"
+          >
+            <path
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              strokeWidth="2"
+              d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10"
+            />
+          </svg>
+        </div>
+        <h2 className="text-xl font-bold text-slate-800">Room Invitation</h2>
+        <p className="text-slate-500 text-center max-w-sm mt-2 mb-6">
+          You have been invited to join{" "}
+          <strong>{client.getRoom(roomId)?.name}</strong>. Accept to start
+          chatting.
+        </p>
+        <div className="flex gap-4">
+          <button
+            onClick={handleJoin}
+            className="cursor-pointer px-8 py-3 bg-indigo-600 text-white font-bold rounded-xl shadow-lg hover:bg-indigo-700 transition-all"
+          >
+            Accept Invitation
+          </button>
+          <button
+            onClick={() => client.leave(roomId)}
+            className="cursor-pointer px-8 py-3 bg-white text-slate-600 font-bold rounded-xl border border-slate-200 hover:bg-slate-50 transition-all"
+          >
+            Decline
+          </button>
+        </div>
+      </div>
+    );
+  }
+
+  console.log("Messages for room", roomId, messages);
+
   return (
     <div className="flex-1 flex flex-col h-full">
       {/* Messages Area */}
       <div className="flex-1 overflow-y-auto p-6 space-y-4 custom-scrollbar">
-        {messages.map((event) => {
-          const isMe = event.getSender() === client?.getUserId();
-          const content = event.getContent().body;
+        {messages
+          .filter((event) => event.getType() === "m.room.message")
+          .map((event) => {
+            const isMe = event.getSender() === client?.getUserId();
+            const content = event.getContent().body;
 
-          return (
-            <div
-              key={event.getId()}
-              className={`flex ${isMe ? "justify-end" : "justify-start"}`}
-            >
+            if (!content) return null;
+
+            return (
               <div
-                className={`max-w-[70%] p-3 rounded-2xl shadow-sm ${
-                  isMe
-                    ? "bg-indigo-600 text-white rounded-tr-none"
-                    : "bg-white text-slate-800 rounded-tl-none border border-slate-100"
-                }`}
+                key={event.getId()}
+                className={`flex ${isMe ? "justify-end" : "justify-start"}`}
               >
-                <p
-                  className={`text-sm ${isMe ? "text-white" : "text-slate-800"}`}
+                <div
+                  className={`max-w-[70%] p-3 rounded-2xl shadow-sm ${
+                    isMe
+                      ? "bg-indigo-600 text-white rounded-tr-none"
+                      : "bg-white text-slate-800 rounded-tl-none border border-slate-100"
+                  }`}
                 >
-                  {content}
-                </p>
-                <p className={`text-[10px] mt-2 opacity-60 text-right`}>
-                  {new Date(event.getTs()).toLocaleString([], {
-                    weekday: "short",
-                    hour: "2-digit",
-                    minute: "2-digit",
-                    hour12: true,
-                  })}
-                </p>
+                  <p
+                    className={`text-sm ${isMe ? "text-white" : "text-slate-800"}`}
+                  >
+                    {content}
+                  </p>
+                  <p className={`text-[10px] mt-2 opacity-60 text-right`}>
+                    {new Date(event.getTs()).toLocaleString([], {
+                      weekday: "short",
+                      hour: "2-digit",
+                      minute: "2-digit",
+                      hour12: true,
+                    })}
+                  </p>
+                </div>
               </div>
-            </div>
-          );
-        })}
+            );
+          })}
         <div ref={scrollRef} />
       </div>
 
@@ -95,7 +173,7 @@ const ChatWindow = ({ roomId }: { roomId: string }) => {
             placeholder="Type a message..."
             className="flex-1 px-4 py-2 outline-none text-slate-700 placeholder-slate-400"
           />
-          <button className="p-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl transition-colors">
+          <button className="cursor-pointer p-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl transition-colors">
             <svg
               className="w-5 h-5"
               fill="none"
